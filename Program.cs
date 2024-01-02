@@ -1,6 +1,10 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using System.Data.SQLite;
+using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using HtmlAgilityPack;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
@@ -14,6 +18,7 @@ namespace NewsScraper
             while (true)
             {
                 ScrapNews();
+                ScrapJsonNews().Wait();
                 SendToTelegram().Wait();
                 Thread.Sleep(600000);
             }
@@ -21,7 +26,7 @@ namespace NewsScraper
 
         static void ScrapNews()
         {
-            string? url = ConfigurationManager.AppSettings["Site"];
+            string? url = "https://rbc.ua//";
 
             HtmlWeb web = new HtmlWeb
             {
@@ -53,6 +58,41 @@ namespace NewsScraper
             }
         }
 
+        static async Task ScrapJsonNews()
+        {
+            string apiUrl = "https://www.ukr.net/ajax/start.json";
+
+            string json = await GetJsonAsync(apiUrl);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var newsResponse = JsonSerializer.Deserialize<NewsResponse>(json, options);
+
+            using (SQLiteConnection connection = Database.OpenConnection())
+            {
+                foreach (var newsCategory in newsResponse.News)
+                {
+                    if (newsCategory.Items != null)
+                    {
+                        foreach (var newsItem in newsCategory.Items)
+                        {
+                            Database.AddNews(
+                                connection,
+                                newsItem.Title.Replace("'", "`"),
+                                newsItem.Url
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        static async Task<string> GetJsonAsync(string url)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                return await httpClient.GetStringAsync(url);
+            }
+        }
+
         static async Task SendToTelegram()
         {
             string? botToken = ConfigurationManager.AppSettings["BotToken"];
@@ -78,11 +118,28 @@ namespace NewsScraper
                         parseMode: ParseMode.Markdown
                     );
 
-                    Thread.Sleep(5000);
+                    Thread.Sleep(2000);
 
                     Database.UpdateIsSend(connection, id);
                 }
             }
         }
+    }
+
+    public class NewsResponse
+    {
+        public List<NewsCategory> News { get; set; }
+    }
+
+    public class NewsCategory
+    {
+        public string Title { get; set; }
+        public List<NewsItem> Items { get; set; }
+    }
+
+    public class NewsItem
+    {
+        public string Title { get; set; }
+        public string Url { get; set; }
     }
 }

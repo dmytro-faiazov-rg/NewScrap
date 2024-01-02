@@ -28,7 +28,6 @@ namespace NewsScraper
                 openCommand.ExecuteNonQuery();
             }
 
-            Console.WriteLine("SQLite database and table created successfully.");
             return connection;
         }
 
@@ -42,6 +41,32 @@ namespace NewsScraper
             )
             {
                 addCommand.ExecuteNonQuery();
+            }
+        }
+
+        public static SQLiteDataReader NewsForSending(SQLiteConnection connection)
+        {
+            using (
+                SQLiteCommand readCommand = new SQLiteCommand(
+                    "SELECT * FROM NewsTable WHERE IsSent = 0;",
+                    connection
+                )
+            )
+            {
+                return readCommand.ExecuteReader();
+            }
+        }
+
+        public static void UpdateIsSend(SQLiteConnection connection, int id)
+        {
+            using (
+                var command = new SQLiteCommand(
+                    $"UPDATE NewsTable SET IsSent = 1 WHERE ID = '{id}';",
+                    connection
+                )
+            )
+            {
+                command.ExecuteNonQuery();
             }
         }
     }

@@ -8,21 +8,20 @@ namespace NewsScraper
         {
             string databasePath = "NewsDatabase.db";
 
-            SQLiteConnection connection = new SQLiteConnection(
-                $"Data Source={databasePath};Version=3;"
-            );
+            SQLiteConnection connection = new($"Data Source={databasePath};Version=3;");
 
             connection.Open();
 
             using (
-                SQLiteCommand openCommand = new SQLiteCommand(
-                    @"CREATE TABLE IF NOT EXISTS NewsTable (
+                SQLiteCommand openCommand =
+                    new(
+                        @"CREATE TABLE IF NOT EXISTS NewsTable (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Title TEXT UNIQUE,
                 Url TEXT,
                 IsSent BOOLEAN DEFAULT false);",
-                    connection
-                )
+                        connection
+                    )
             )
             {
                 openCommand.ExecuteNonQuery();
@@ -33,41 +32,26 @@ namespace NewsScraper
 
         public static void AddNews(SQLiteConnection connection, string title, string url)
         {
-            using (
-                SQLiteCommand addCommand = new SQLiteCommand(
+            using SQLiteCommand addCommand =
+                new(
                     $"INSERT OR IGNORE INTO NewsTable (Title, Url) VALUES ('{title}', '{url}');",
                     connection
-                )
-            )
-            {
-                addCommand.ExecuteNonQuery();
-            }
+                );
+            addCommand.ExecuteNonQuery();
         }
 
         public static SQLiteDataReader NewsForSending(SQLiteConnection connection)
         {
-            using (
-                SQLiteCommand readCommand = new SQLiteCommand(
-                    "SELECT * FROM NewsTable WHERE IsSent = 0;",
-                    connection
-                )
-            )
-            {
-                return readCommand.ExecuteReader();
-            }
+            using SQLiteCommand readCommand =
+                new("SELECT * FROM NewsTable WHERE IsSent = 0;", connection);
+            return readCommand.ExecuteReader();
         }
 
         public static void UpdateIsSend(SQLiteConnection connection, int id)
         {
-            using (
-                var command = new SQLiteCommand(
-                    $"UPDATE NewsTable SET IsSent = 1 WHERE ID = '{id}';",
-                    connection
-                )
-            )
-            {
-                command.ExecuteNonQuery();
-            }
+            using SQLiteCommand updateCommand =
+                new($"UPDATE NewsTable SET IsSent = 1 WHERE ID = '{id}';", connection);
+            updateCommand.ExecuteNonQuery();
         }
     }
 }
